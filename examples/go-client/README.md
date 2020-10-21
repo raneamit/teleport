@@ -23,22 +23,26 @@ Auth API clients must perform two-way authentication using x509 certificates:
 This little program demonstrates how to:
 
 1. Authenticate against the Auth API using two certificates.
-2. Makes an API call to issue a server join token, i.e. an equivalent 
-   of `tctl node add`
+2. Make API calls to issue CRUD requests for cluster join tokens, roles, and labels.
+3. Receive, allow, and deny access requests.
 
-Before running it, you have to use `tctl` to issue an API certificate,
-i.e. on the auth server:
+First, get your teleport server running. If you aren't using the default 
+teleport data directory,  change `dataDir` in main.go to match yours.
+
+Next, you have to use `tctl` to issue an API certificate, i.e. on the auth server:
 
 ```
 $ tctl auth export --type=tls > /var/lib/teleport/ca.cert
 ```
 
-This should work as long as you execute it on the same auth server:
+Now you can run the go example.
 
 ```bash
 $ go get github.com/gravitational/teleport/lib/auth
-$ go run main.go
+$ go run .
 ```
+
+This should work as long as you execute it on the same auth server:
 
 ### TODO
 

@@ -54,14 +54,131 @@ certificate lifetime.
 
 # gRPC APIs
 
+## Client QuickStart
+
+```go
+{!examples/go-client/client.go!}
+```
+
 ## Audit Events API
 Coming Soon
 
 ## Certificate Generation API
 Coming Soon
 
+## Roles APIs
+
+[Roles](http://localhost:6600/enterprise/ssh-rbac/#roles) are used to define what resources and actions a user is allowed/denied access to.
+
+#### Create a new role
+
+```go
+import github.com/gravitational/teleport/lib/services
+
+role, _ := services.NewRole(roleName, services.RoleSpecV3{
+	Allow: services.RoleConditions{
+    Logins: []string{login},
+	},
+})
+
+client.UpsertRole(ctx, role)
+```
+
+#### retrieve roles
+
+```go
+roles, err := client.GetRoles()
+if err != nil {
+  return err
+}
+```
+
+#### update role
+
+```go
+// update a role to deny access to nodes labeled as production
+// you can update any attributes a role has with its setter methods
+role, err = client.GetRole("dev")
+if err != nil {
+  log.Fatal(err)
+}
+  
+role.SetNodeLabels(services.Deny, services.Labels{"environment": "production"})
+if err = client.UpsertRole(ctx, role); err != nil {
+  return err
+}
+```
+
+#### delete role
+
+```go
+if err = client.DeleteRole(ctx, "dev"); err != nil {
+  return err
+}
+```
+
 ## Tokens API
-Coming Soon
+
+[Tokens](http://localhost:6600/admin-guide/#adding-nodes-to-the-cluster) are used to add nodes to a cluster.
+
+#### Create a new token
+
+```go
+tokenName := "mytoken"
+token, err := client.GenerateToken(ctx, auth.GenerateTokenRequest{
+  Token: tokenName,
+  Roles: teleport.Roles{teleport.RoleProxy},
+  TTL:   time.Hour,
+})
+if err != nil {
+  log.Fatalf("Failed to generate token: %v", err)
+}
+log.Printf("Generated token: %v\n", token)
+
+// generate a random cluster join token for adding a node to a cluster
+randToken, err := client.GenerateToken(ctx, auth.GenerateTokenRequest{
+  Roles: teleport.Roles{teleport.RoleNode},
+  TTL:   time.Hour,
+})
+if err != nil {
+  log.Fatalf("Failed to generate random token: %v", err)
+}
+log.Printf("Generated random token: %v\n", randToken)
+```
+
+#### retrieve tokens
+
+```go
+tokens, err := client.GetTokens()
+if err != nil {
+  return err
+}
+```
+
+#### update token
+
+```go
+// update a token to be a proxy token
+// you can update any attributes a token has with its setter methods
+provToken, err := client.GetToken(token)
+if err != nil {
+  log.Fatal(err)
+}
+
+provToken.SetRoles(teleport.Roles{teleport.RoleProxy})
+err = client.UpsertToken(provToken)
+if err != nil {
+  log.Fatal(err)
+}
+```
+
+#### delete token
+
+```go
+if err = client.DeleteToken(token); err != nil {
+  return err
+}
+```
 
 ## Workflow API
 Coming Soon
