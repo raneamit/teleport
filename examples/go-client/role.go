@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"fmt"
 	"log"
 
 	"github.com/gravitational/teleport/lib/auth"
@@ -9,50 +10,52 @@ import (
 )
 
 // rolesCRUD performs each roles crud function as an example
-func roleCRUD(ctx context.Context, client *auth.Client) {
+func roleCRUD(ctx context.Context, client *auth.Client) error {
 	// create a new dev role which can log into teleport as 'teleport'
-	roleName, login := "dev", "teleport"
-	spec := services.RoleSpecV3{
+	roleSpec := services.RoleSpecV3{
 		Allow: services.RoleConditions{
-			Logins: []string{login},
+			Logins: []string{"teleport"},
 		},
 	}
-	role, err := services.NewRole(roleName, spec)
+
+	role, err := services.NewRole("dev", roleSpec)
 	if err != nil {
-		log.Fatalf("Failed to make new role %v", err)
+		return fmt.Errorf("Failed to make new role %v", err)
 	}
+
 	err = client.UpsertRole(ctx, role)
 	if err != nil {
-		log.Fatalf("Failed to create role: %v", err)
+		return fmt.Errorf("Failed to create role: %v", err)
 	}
 	log.Printf("Created Role: %v", role.GetName())
 
 	// retrieve all roles in the cluster
 	roles, err := client.GetRoles()
 	if err != nil {
-		log.Fatalf("Failed to retrieve roles: %v", err)
+		return fmt.Errorf("Failed to retrieve roles: %v", err)
 	}
 	log.Println("Retrieved Roles:")
 	for _, r := range roles {
 		log.Printf("  %v", r.GetName())
 	}
 
-	// update the dev role to deny access to nodes labeled as production
-	// you can update any attributes a role has with its setter methods
-	role, err = client.GetRole(roleName)
+	// updates the dev role to deny access to nodes labeled as production
+	role, err = client.GetRole("dev")
 	if err != nil {
-		log.Fatal(err)
+		fmt.Errorf("Failed to retrieve role for updating: %v", err)
 	}
 
 	role.SetNodeLabels(services.Deny, services.Labels{"environment": []string{"production"}})
 	if err = client.UpsertRole(ctx, role); err != nil {
-		log.Fatalf("Failed to update role: %v", err)
+		return fmt.Errorf("Failed to update role: %v", err)
 	}
 	log.Printf("Updated role")
 
 	// delete the dev role we just created
-	if err = client.DeleteRole(ctx, roleName); err != nil {
-		log.Fatalf("Failed to delete role: %v", err)
+	if err = client.DeleteRole(ctx, "dev"); err != nil {
+		return fmt.Errorf("Failed to delete role: %v", err)
 	}
 	log.Printf("Deleted role")
+
+	return nil
 }

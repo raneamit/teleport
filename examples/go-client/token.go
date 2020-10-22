@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"fmt"
 	"log"
 	"time"
 
@@ -9,58 +10,47 @@ import (
 	"github.com/gravitational/teleport/lib/auth"
 )
 
-// tokenCRUD performs each token crud function as an example
-func tokenCRUD(ctx context.Context, client *auth.Client) {
-	// generate a cluster join token for adding another proxy to a cluster.
-	tokenName := "mytoken"
-	token, err := client.GenerateToken(ctx, auth.GenerateTokenRequest{
-		Token: tokenName,
+// tokenCRUD performs each token crud function as an example.
+func tokenCRUD(ctx context.Context, client *auth.Client) error {
+	// generate a randomly generated cluster join token for adding another proxy to a cluster.
+	tokenName, err := client.GenerateToken(ctx, auth.GenerateTokenRequest{
+		// You can provide 'Token' for a static token name
 		Roles: teleport.Roles{teleport.RoleProxy},
 		TTL:   time.Hour,
 	})
 	if err != nil {
-		log.Fatalf("Failed to generate token: %v", err)
+		return fmt.Errorf("Failed to generate token: %v", err)
 	}
-	log.Printf("Generated token: %v\n", token)
-
-	// generate a random cluster join token for adding a node to a cluster
-	randToken, err := client.GenerateToken(ctx, auth.GenerateTokenRequest{
-		Roles: teleport.Roles{teleport.RoleNode},
-		TTL:   time.Hour,
-	})
-	if err != nil {
-		log.Fatalf("Failed to generate random token: %v", err)
-	}
-	log.Printf("Generated random token: %v\n", randToken)
+	log.Printf("Generated token: %v", tokenName)
 
 	// retrieve all active cluster join tokens
 	tokens, err := client.GetTokens()
 	if err != nil {
-		log.Fatalf("Failed to get tokens: %v", err)
+		return fmt.Errorf("Failed to get tokens: %v", err)
 	}
 	log.Println("Retrieved tokens:")
 	for _, t := range tokens {
 		log.Printf("  %v", t.GetName())
 	}
 
-	// update a token
-	provToken, err := client.GetToken(tokenName)
+	// update the token to be a proxy token
+	token, err := client.GetToken(tokenName)
 	if err != nil {
-		log.Fatal(err)
+		return fmt.Errorf("Failed to retrieve token for update: %v", err)
 	}
 
-	provToken.SetRoles(teleport.Roles{teleport.RoleProxy})
-	err = client.UpsertToken(provToken)
+	token.SetRoles(teleport.Roles{teleport.RoleProxy})
+	err = client.UpsertToken(token)
 	if err != nil {
-		log.Fatal(err)
+		return fmt.Errorf("Failed to update token: %v", err)
 	}
+	log.Println("Updated token")
 
 	// delete the cluster tokens we just created
-	if err = client.DeleteToken(token); err != nil {
-		log.Fatalf("Failed to delete token: %v", err)
+	if err = client.DeleteToken(tokenName); err != nil {
+		return fmt.Errorf("Failed to delete token: %v", err)
 	}
-	if err = client.DeleteToken(randToken); err != nil {
-		log.Fatalf("Failed to delete randToken: %v", err)
-	}
-	log.Printf("Deleted generated tokens\n")
+	log.Println("Deleted token")
+
+	return nil
 }

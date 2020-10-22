@@ -18,7 +18,6 @@ package main
 
 import (
 	"context"
-	"fmt"
 	"log"
 )
 
@@ -30,8 +29,14 @@ func main() {
 	}
 
 	ctx := context.Background()
-	fmt.Println("")
-	tokenCRUD(ctx, client)
-	fmt.Println("")
-	roleCRUD(ctx, client)
+
+	err = tokenCRUD(ctx, client)
+	if err != nil {
+		log.Print(err)
+	}
+
+	err = roleCRUD(ctx, client)
+	if err != nil {
+		log.Print(err)
+	}
 }

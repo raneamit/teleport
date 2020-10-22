@@ -75,46 +75,44 @@ Coming Soon
 ```go
 import github.com/gravitational/teleport/lib/services
 
-role, _ := services.NewRole(roleName, services.RoleSpecV3{
+// creates a new dev role which can log into teleport as 'teleport'
+roleSpec := services.RoleSpecV3{
 	Allow: services.RoleConditions{
-    Logins: []string{login},
+    Logins: []string{"teleport"},
 	},
-})
+}
 
-client.UpsertRole(ctx, role)
+role, err := services.NewRole("dev", roleSpec)
+if err != nil {
+  return err
+}
+
+err := client.UpsertRole(ctx, role)
 ```
 
-#### retrieve roles
+#### Retrieve roles
 
 ```go
 roles, err := client.GetRoles()
-if err != nil {
-  return err
-}
 ```
 
-#### update role
+#### Update role
 
 ```go
-// update a role to deny access to nodes labeled as production
-// you can update any attributes a role has with its setter methods
-role, err = client.GetRole("dev")
+role, err := client.GetRole("dev")
 if err != nil {
-  log.Fatal(err)
+  return err
 }
   
+// updates the dev role to deny access to nodes labeled as production
 role.SetNodeLabels(services.Deny, services.Labels{"environment": "production"})
-if err = client.UpsertRole(ctx, role); err != nil {
-  return err
-}
+err = client.UpsertRole(ctx, role)
 ```
 
-#### delete role
+#### Delete role
 
 ```go
-if err = client.DeleteRole(ctx, "dev"); err != nil {
-  return err
-}
+err := client.DeleteRole(ctx, "dev")
 ```
 
 ## Tokens API
@@ -124,60 +122,36 @@ if err = client.DeleteRole(ctx, "dev"); err != nil {
 #### Create a new token
 
 ```go
-tokenName := "mytoken"
-token, err := client.GenerateToken(ctx, auth.GenerateTokenRequest{
-  Token: tokenName,
+tokenString, err := client.GenerateToken(ctx, auth.GenerateTokenRequest{
+  // You can provide 'Token' for a non-random tokenString
   Roles: teleport.Roles{teleport.RoleProxy},
   TTL:   time.Hour,
 })
-if err != nil {
-  log.Fatalf("Failed to generate token: %v", err)
-}
-log.Printf("Generated token: %v\n", token)
-
-// generate a random cluster join token for adding a node to a cluster
-randToken, err := client.GenerateToken(ctx, auth.GenerateTokenRequest{
-  Roles: teleport.Roles{teleport.RoleNode},
-  TTL:   time.Hour,
-})
-if err != nil {
-  log.Fatalf("Failed to generate random token: %v", err)
-}
-log.Printf("Generated random token: %v\n", randToken)
 ```
 
-#### retrieve tokens
+#### Retrieve tokens
 
 ```go
 tokens, err := client.GetTokens()
+```
+
+#### Update token
+
+```go
+provisionToken, err := client.GetToken(tokenString)
 if err != nil {
   return err
 }
+
+// updates the token to be a proxy token
+provisionToken.SetRoles(teleport.Roles{teleport.RoleProxy})
+err = client.UpsertToken(provisionToken)
 ```
 
-#### update token
+#### Delete token
 
 ```go
-// update a token to be a proxy token
-// you can update any attributes a token has with its setter methods
-provToken, err := client.GetToken(token)
-if err != nil {
-  log.Fatal(err)
-}
-
-provToken.SetRoles(teleport.Roles{teleport.RoleProxy})
-err = client.UpsertToken(provToken)
-if err != nil {
-  log.Fatal(err)
-}
-```
-
-#### delete token
-
-```go
-if err = client.DeleteToken(token); err != nil {
-  return err
-}
+err := client.DeleteToken(tokenString)
 ```
 
 ## Workflow API
