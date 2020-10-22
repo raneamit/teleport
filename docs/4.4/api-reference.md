@@ -77,9 +77,9 @@ import github.com/gravitational/teleport/lib/services
 
 // creates a new dev role which can log into teleport as 'teleport'
 roleSpec := services.RoleSpecV3{
-	Allow: services.RoleConditions{
+  Allow: services.RoleConditions{
     Logins: []string{"teleport"},
-	},
+  },
 }
 
 role, err := services.NewRole("dev", roleSpec)
