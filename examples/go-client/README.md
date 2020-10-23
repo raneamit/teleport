@@ -9,6 +9,12 @@ Both `tctl` and `tsh` use the Auth API to:
 * Add nodes and users (`tctl users` and `tctl nodes`)
 * Manipulate cluster state (`tctl` resources)
 
+This little program demonstrates how to use the API to...
+
+1. Authenticate against the Auth API using two certificates.
+2. Make API calls to issue CRUD requests for cluster join tokens, roles, and labels.
+3. Receive, allow, and deny access requests.
+
 ### API Authentication
 
 Auth API clients must perform two-way authentication using x509 certificates:
@@ -18,34 +24,21 @@ Auth API clients must perform two-way authentication using x509 certificates:
 2. They must offer their x509 certificate, which has been previously issued
    by the auth sever.
 
-### Demo
-
-This little program demonstrates how to:
-
-1. Authenticate against the Auth API using two certificates.
-2. Make API calls to issue CRUD requests for cluster join tokens, roles, and labels.
-3. Receive, allow, and deny access requests.
-
-First, get your teleport server running. If you aren't using the default 
-teleport data directory,  change `dataDir` in main.go to match yours.
-
-Next, you have to use `tctl` to issue an API certificate, i.e. on the auth server:
-
-```
-$ tctl auth export --type=tls > /var/lib/teleport/ca.cert
-```
-
-Now you can run the go example.
+Start up a teleport auth server and then run the folowing commands to create an api-user with a signed certificate. Make sure to run this form the `go-client` directory for proper output.
 
 ```bash
-$ go get github.com/gravitational/teleport/lib/auth
+$ tctl create api-user-role.yaml
+$ tctl auth sign --format=tls --ttl=87600h --user=api-user --out=certs/api-user
+```
+
+### Demo
+
+With the user and certificate created, you can run the go example.
+
+```bash
 $ go run .
 ```
 
-This should work as long as you execute it on the same auth server:
-
 ### TODO
 
-This Auth server API allows clients to "jump" to API endpoints of all trusted
-clusters connected to it. We need to add a snippet how to enumerate trusted
-clusters and connect to their API endpoints later.
+We need to add a snippet how to enumerate trusted clusters and connect to their API endpoints later.

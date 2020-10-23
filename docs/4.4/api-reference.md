@@ -12,37 +12,46 @@ Teleport is currently working on documenting our API.
         We are currently working on this project. If you have an API suggestion, [please complete our survey](https://docs.google.com/forms/d/1HPQu5Asg3lR0cu5crnLDhlvovGpFVIIbDMRvqclPhQg/edit).
 
 ## Authentication
-In order to interact with the Access Request API, you will need to provision appropriate
+In order to interact with the API, you will need to provision appropriate
 TLS certificates. In order to provision certificates, you will need to create a
-user with appropriate permissions:
+user with appropriate permissions. You should only give the api user permissions for what it actually needs. 
+
+For example, an auditing program could use this role:
+
+```yaml
+kind: role
+version: v3
+metadata:
+  name: auditor
+spec:
+  options:
+    # max_session_ttl defines the TTL (time to live) of SSH certificates 
+    # issued to the users with this role.
+    max_session_ttl: 1h
+  allow:
+    logins: ['auditor']
+    rules:
+    - resources:
+      - session
+      verbs:
+      - list
+      - read
+  deny:
+    node_labels:
+      '*': '*'
+```
+
+To quickly get started with the api, you can use this api-admin user.
+
+```yaml
+{!examples/go-client/api-admin.yaml!}
+```
+
+Create the user and authentication files.
 
 ```bash
-$ cat > rscs.yaml <<EOF
-kind: user
-metadata:
-  name: access-plugin
-spec:
-  roles: ['access-plugin']
-version: v2
----
-kind: role
-metadata:
-  name: access-plugin
-spec:
-  allow:
-    rules:
-      - resources: ['access_request']
-        verbs: ['list','read','update']
-    # teleport currently refuses to issue certs for a user with 0 logins,
-    # this restriction may be lifted in future versions.
-    logins: ['access-plugin']
-version: v3
-EOF
-# ...
-$ tctl create rscs.yaml
-# ...
-$ tctl auth sign --format=tls --user=access-plugin --out=auth
-# ...
+$ tctl create api-admin.yaml
+$ tctl auth sign --format=tls --user=api-admin --out=api-admin 
 ```
 
 The above sequence should result in three PEM encoded files being generated:
@@ -55,6 +64,8 @@ certificate lifetime.
 # gRPC APIs
 
 ## Client QuickStart
+
+Follow the authentication section above to create a user and TLS certificatges. Put the generated PEM files in a folder called cert, and provide this folder in the same directory as the following go file.
 
 ```go
 {!examples/go-client/client.go!}

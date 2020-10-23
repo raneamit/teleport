@@ -1,19 +1,20 @@
 package main
 
 import (
-	"context"
 	"crypto/tls"
+	"crypto/x509"
+	"io/ioutil"
 	"log"
-	"path/filepath"
+	"os"
 
-	"github.com/gravitational/teleport"
 	"github.com/gravitational/teleport/lib/auth"
 	"github.com/gravitational/teleport/lib/utils"
+	"github.com/gravitational/trace"
 )
 
 // connectClient establishes a gRPC client connected to an auth server.
 func connectClient() (*auth.Client, error) {
-	tlsConfig, err := setupClientTLS(context.Background())
+	tlsConfig, err := LoadTLSConfig("certs/api-admin.crt", "certs/api-admin.key", "certs/api-admin.cas")
 	if err != nil {
 		log.Fatalf("Failed to setup TLS config: %v", err)
 	}
@@ -25,24 +26,36 @@ func connectClient() (*auth.Client, error) {
 	return auth.NewTLSClient(clientConfig)
 }
 
-// setupClientTLS sets up client TLS authentiction between TLS client and Teleport Auth server.
-func setupClientTLS(ctx context.Context) (*tls.Config, error) {
-	// This function assumes you're running the api locally alongside teleport. If you are
-	// running the api remotely, you'll need to provide it with the client certificates.
-
-	// replace /var/lib/teleport (default) with your data directory filepath
-	dataDir := "/var/lib/teleport"
-	storage, err := auth.NewProcessStorage(ctx, filepath.Join(dataDir, teleport.ComponentProcess))
+// LoadTLSConfig loads and sets up client TLS config for authentictionion
+func LoadTLSConfig(certPath, keyPath, rootCAsPath string) (*tls.Config, error) {
+	cert, err := tls.LoadX509KeyPair(certPath, keyPath)
 	if err != nil {
 		return nil, err
 	}
-	defer storage.Close()
-
-	// This uses hard coded paths to retrieve the client certificates from your teleport process
-	identity, err := storage.ReadIdentity(auth.IdentityCurrent, teleport.RoleAdmin)
+	caPool, err := LoadTLSCertPool(rootCAsPath)
 	if err != nil {
 		return nil, err
 	}
+	conf := &tls.Config{
+		Certificates: []tls.Certificate{cert},
+		RootCAs:      caPool,
+	}
+	return conf, nil
+}
 
-	return identity.TLSConfig(nil)
+// LoadTLSCertPool is used to load root CA certs from file path.
+func LoadTLSCertPool(path string) (*x509.CertPool, error) {
+	caFile, err := os.Open(path)
+	if err != nil {
+		return nil, trace.Wrap(err)
+	}
+	caCerts, err := ioutil.ReadAll(caFile)
+	if err != nil {
+		return nil, trace.Wrap(err)
+	}
+	pool := x509.NewCertPool()
+	if ok := pool.AppendCertsFromPEM(caCerts); !ok {
+		return nil, trace.BadParameter("invalid CA cert PEM")
+	}
+	return pool, nil
 }

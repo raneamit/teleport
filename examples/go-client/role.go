@@ -42,7 +42,7 @@ func roleCRUD(ctx context.Context, client *auth.Client) error {
 	// updates the dev role to deny access to nodes labeled as production
 	role, err = client.GetRole("dev")
 	if err != nil {
-		fmt.Errorf("Failed to retrieve role for updating: %v", err)
+		return fmt.Errorf("Failed to retrieve role for updating: %v", err)
 	}
 
 	role.SetNodeLabels(services.Deny, services.Labels{"environment": []string{"production"}})
